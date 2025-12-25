@@ -9,8 +9,12 @@ dump.rdb
 appendonly.aof
 .vscode/
 .idea/
+
+# Private learning materials
 docs/LEARNING_JOURNAL.md
 LEARNING_JOURNAL.md
 **/LEARNING_JOURNAL.md
 learning-journal.md
 *.journal.md
+notes/
+personal/
