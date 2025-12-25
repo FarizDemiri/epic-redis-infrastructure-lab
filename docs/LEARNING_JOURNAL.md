@@ -1,6 +1,6 @@
 # Redis Mastery - Learning Journal
 
-Internal document tracking daily progress, insights, and pattern recognition.
+Daily progress tracking for Redis administration skill development with focus on healthcare infrastructure patterns.
 
 ---
 
