@@ -84,19 +84,6 @@ GET patient:bed427:vitals  # Cache hit = fast
 
 ---
 
-## Interview Talking Points
-
-**Q: "How does Epic use Redis?"**
-> Three main patterns: 1) Session management with automatic HIPAA-compliant logout via TTL, 2) Message buffering for Interconnect HL7 routing during peak volumes, 3) Read caching for CLOC dashboards serving 50+ concurrent users. Each pattern leverages Redis's sub-millisecond performance and appropriate data structures.
-
-**Q: "Why Redis vs database?"**
-> Redis provides 50-100x faster reads (sub-1ms vs 50-100ms) critical for real-time clinical workflows. For example, CLOC dashboards refresh every 5 seconds for 50 users - that's 120,000 queries/minute. PostgreSQL would collapse under that read load. Redis cache with 60-second TTL serves most requests from memory.
-
-**Q: "How do you handle HIPAA compliance?"**
-> TTL-based automatic logout after 30 minutes idle (session expiration), TLS encryption in transit for PHI data, ACL-based role permissions, audit logging for all PHI access, and encrypted persistence (AOF/RDB) at rest.
-
----
-
 ## Production Considerations
 
 **Security**:

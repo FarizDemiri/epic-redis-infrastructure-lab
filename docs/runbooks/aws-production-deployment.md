@@ -800,22 +800,6 @@ Regenerate and distribute new certs
 
 ---
 
-## Interview Talking Points
-
-**Q: "How did you ensure HIPAA compliance?"**
-
-> "I implemented defense-in-depth security with three layers: TLS 1.3 encryption for data in transit, AES-256 EBS encryption for data at rest, and ACL-based role permissions for access control. The infrastructure uses VPC isolation and security groups to restrict network access. All EC2 instances are deployed across three availability zones for high availability, ensuring no single point of failure for protected health information."
-
-**Q: "What challenges did you face?"**
-
-> "The main challenge was troubleshooting the cluster connectivity. The cluster create command initially hung because the security group was missing port 16379 - the Redis cluster bus. This taught me that Redis cluster requires two ports: 6379 for client connections and 16379 for inter-node gossip protocol. I documented this in my troubleshooting runbook so I'd never make the same mistake."
-
-**Q: "Why use ACLs instead of just a password?"**
-
-> "ACLs implement the principle of least privilege. With a single password, everyone has full access - a developer debugging sessions could accidentally run FLUSHALL and delete all patient data. With ACLs, the app user can only read/write session and patient keys, the dev user has read-only access, and only the admin user can perform destructive operations. This prevents accidents and contains potential security breaches."
-
----
-
 ## Next Steps
 
 ### For Production
@@ -837,4 +821,4 @@ Regenerate and distribute new certs
 
 **Production-Ready:** ✅ Yes (with additional monitoring and backups)
 
-**This architecture serves as the foundation for HIPAA-compliant caching and session management at NewYork-Presbyterian Hospital.**
+**This architecture demonstrates production-grade, HIPAA-compliant patterns for caching and session management in healthcare systems.**
