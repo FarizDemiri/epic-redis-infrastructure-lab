@@ -6,7 +6,7 @@
 
 ## Architecture Diagram
 
-![AWS Redis Cluster Architecture](C:/Users/User 1/.gemini/antigravity/brain/2c344665-b045-4cf6-ba70-6435277ed765/aws_architecture_diagram_1767127004704.png)
+![AWS Redis Cluster Architecture](images/aws-redis-architecture.png)
 
 ---
 
