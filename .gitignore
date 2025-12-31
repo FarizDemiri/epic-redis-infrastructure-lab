@@ -1,14 +1,37 @@
+# Node.js
 node_modules/
-*.log
-.env
-.DS_Store
-*.swp
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Redis data files
 *.rdb
 *.aof
 dump.rdb
 appendonly.aof
+*.log
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+
+# AWS credentials (NEVER commit these)
+*.pem
+*.key
+aws-credentials.txt
+credentials.json
 
 # Private learning materials
 docs/LEARNING_JOURNAL.md
@@ -18,4 +41,9 @@ learning-journal.md
 *.journal.md
 notes/
 personal/
-docs/LEARNING_JOURNAL.md
+brain/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

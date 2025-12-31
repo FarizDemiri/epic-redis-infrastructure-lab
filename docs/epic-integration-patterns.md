@@ -13,16 +13,55 @@ Quick reference for Redis use cases in Epic healthcare environments.
 **Pattern**:
 
 ```redis
-HSET session:{id} user_id "dr_smith" role "physician" department "emergency"
-EXPIRE session:{id} 1800  # 30-minute HIPAA timeout
-HGET session:{id} role    # Fast permission check
+# Store clinician session on login
+# Key format: session:{session_id}
+# TTL enforces HIPAA 30-minute timeout requirement
+HSET session:abc123 \
+  user_id "dr_smith_12345" \
+  role "physician" \
+  department "emergency" \
+  portal "Hyperspace" \
+  last_activity "2025-12-30T22:00:00Z"
+EXPIRE session:abc123 1800  # 30 minutes (HIPAA requirement)
+
+# Fast permission check on every page load
+# Sub-1ms response enables seamless clinical workflows
+HGET session:abc123 role
+# Returns: "physician"
+
+# Update last activity (refresh TTL)
+HSET session:abc123 last_activity "2025-12-30T22:15:00Z"
+EXPIRE session:abc123 1800  # Reset 30-min countdown
+
+# Check if session is still valid
+TTL session:abc123
+# Returns: 1785 (seconds remaining)
+
+# Cleanup on explicit logout
+DEL session:abc123
+```
+
+**Real-World Scenario:**
+
+```
+10:00 AM: Dr. Smith logs into Hyperspace
+          → Session created with 30-min TTL
+10:25 AM: Still reviewing patient chart
+          → Each page load resets TTL
+10:30 AM: Called away to emergency
+          → No activity for 30 minutes
+11:00 AM: Session automatically expires
+          → HIPAA compliance: inactive session removed
+11:05 AM: Dr. Smith returns, must re-authenticate
+          → Security: no orphaned sessions
 ```
 
 **Why Redis**:
 
-- Sub-1ms lookup vs 50-100ms database
-- Automatic expiration (HIPAA compliance)
-- Handles millions of session checks/day
+- **Sub-1ms lookup** vs 50-100ms database (critical for page loads)
+- **Automatic expiration** ensures HIPAA compliance without cron jobs
+- **Handles millions** of session checks/day across 10,000+ concurrent clinicians
+- **No stale data** - TTL guarantees cleanup
 
 ---
 

@@ -7,6 +7,7 @@
 [![Prometheus](https://img.shields.io/badge/Prometheus-2.48-E6522C?logo=prometheus)](https://prometheus.io/)
 [![Grafana](https://img.shields.io/badge/Grafana-Latest-F46800?logo=grafana)](https://grafana.com/)
 [![HIPAA](https://img.shields.io/badge/HIPAA-Compliant-blue)](https://www.hhs.gov/hipaa/index.html)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ---
 
@@ -103,6 +104,8 @@ Real-time cluster health visualization:
 │                   └─────────────────┘                      │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+**📊 [View Interactive Architecture Diagrams](docs/ARCHITECTURE_DIAGRAMS.md)** - Mermaid diagrams with详细 system, security, monitoring, and data flow visualizations
 
 **Key Components:**
 
@@ -437,9 +440,11 @@ This project is for educational and portfolio demonstration purposes.
 
 **For questions about this project or collaboration opportunities:**
 
-- GitHub: [YOUR_GITHUB_USERNAME]
-- LinkedIn: [YOUR_LINKEDIN_URL]
-- Email: [YOUR_EMAIL]
+- **GitHub:** Find this repository in my profile
+- **Portfolio:** View my other infrastructure and DevOps projects
+- **Connect:** Open to discussing Redis, AWS, healthcare IT, and SRE opportunities
+
+> *Note: This project demonstrates production-grade infrastructure skills. All code, documentation, and architecture decisions are available in this repository for review.*
 
 ---
 
