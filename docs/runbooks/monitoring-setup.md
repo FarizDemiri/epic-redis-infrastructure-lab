@@ -732,7 +732,37 @@ aws ec2 stop-instances --instance-ids <NODE_1A_ID> <NODE_1B_ID> <NODE_1C_ID>
 
 ---
 
-## Next Steps
+## Incident Response Playbook
+
+### On-Call Procedures
+
+**Escalation Path:**
+
+1. **L1 (Monitoring Alert)** → Automated alert fired
+2. **L2 (On-Call Engineer)** → Investigate using runbook
+3. **L3 (Senior SRE)** → Complex issues requiring architectural knowledge
+4. **L4 (VP Engineering)** → Catastrophic outage affecting patients
+
+**Response Times:**
+
+- **P1 (Critical - Service Down):** 15 minutes
+- **P2 (High - Performance Degraded):** 1 hour
+- **P3 (Medium - Non-urgent):** Next business day
+
+---
+
+### Common Incidents
+
+**Incident 1: Redis Node Down** - One node shows DOWN, cluster degraded  
+**Incident 2: High Memory Usage** - Memory approaching max, evictions occurring  
+**Incident 3: Prometheus Not Scraping** - Missing metrics, dashboards showing "No Data"  
+**Incident 4: Cluster FAIL State** - Cluster cannot serve requests  
+**Incident 5: Grafana Dashboard Broken** - Visualization errors  
+**Incident 6: TLS Certificate Expiring** - Certificates approaching expiration
+
+See [aws-production-deployment.md](aws-production-deployment.md) for disaster recovery procedures.
+
+---
 
 1. **Set up alerting** (Prometheus Alert Manager)
 2. **Add more dashboards** (Performance, Resources)

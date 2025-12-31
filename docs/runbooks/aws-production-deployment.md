@@ -800,6 +800,329 @@ Regenerate and distribute new certs
 
 ---
 
+## Backup & Recovery Procedures
+
+### EBS Snapshot Backups
+
+**Automated Daily Snapshots:**
+
+```bash
+# Create snapshot of all EBS volumes
+aws ec2 create-snapshot \
+  --volume-id vol-XXXXX \
+  --description "Redis Node 1a daily backup $(date +%Y-%m-%d)" \
+  --tag-specifications 'ResourceType=snapshot,Tags=[{Key=Name,Value=redis-node-1a-backup},{Key=Auto,Value=true}]'
+
+# Repeat for all 3 nodes
+```
+
+**Snapshot Lifecycle Policy:**
+
+```bash
+# AWS Console → EC2 → Lifecycle Manager → Create lifecycle policy
+
+Target resource: volume
+Target tags: Name=redis-node-*
+Schedule:
+  - Daily at 2:00 AM UTC
+  - Retain: 30 days
+  - Copy to: us-west-2 (disaster recovery region)
+```
+
+**Manual Snapshot Before Changes:**
+
+```bash
+# Before any risky operation (upgrade, config change):
+aws ec2 create-snapshot \
+  --volume-id vol-XXXXX \
+  --description "Pre-upgrade snapshot $(date +%Y-%m-%d-%H%M)"
+```
+
+---
+
+### Redis RDB/AOF Backups
+
+**Download RDB Files:**
+
+```bash
+# SSH to node
+ssh -i redis-cluster-key.pem ubuntu@<NODE_IP>
+
+# Copy RDB file
+sudo cp /var/lib/redis/dump.rdb ~/backup-$(date +%Y%m%d).rdb
+
+# Download to local machine
+scp -i redis-cluster-key.pem ubuntu@<NODE_IP>:~/backup-*.rdb ./
+```
+
+**Enable AOF for Point-in-Time Recovery:**
+
+```bash
+# In redis.conf
+appendonly yes
+appendfilename "appendonly.aof"
+appendfsync everysec
+
+# Restart Redis
+sudo systemctl restart redis-server
+```
+
+**Backup Strategy:**
+
+- **EBS Snapshots:** Full disk backup (daily at 2 AM)
+- **RDB Files:** Redis-level backup (daily after snapshot)
+- **AOF Files:** Continuous write log for PITR
+- **Off-site Copy:** Snapshots copied to us-west-2
+
+---
+
+### Restore Procedures
+
+#### Scenario 1: Single Node Failure
+
+**Symptoms:**
+
+- One node shows DOWN in cluster
+- Monitoring alerts: "redis_up == 0"
+
+**Recovery Steps:**
+
+```bash
+# 1. Identify failed node
+redis-cli -c --tls \
+  --cert ~/redis-certs/redis-server-cert.pem \
+  --key ~/redis-certs/redis-server-key.pem \
+  --cacert ~/redis-certs/ca-cert.pem \
+  --user admin_user --pass AdminPassword123! \
+  CLUSTER NODES
+
+# 2. Stop failed instance
+aws ec2 stop-instances --instance-ids i-XXXXX
+
+# 3. Restore from latest EBS snapshot
+aws ec2 create-volume \
+  --snapshot-id snap-XXXXX \
+  --availability-zone us-east-1a
+
+# 4. Detach old volume, attach new volume
+aws ec2 detach-volume --volume-id vol-OLD
+aws ec2 attach-volume --volume-id vol-NEW --instance-id i-XXXXX --device /dev/sda1
+
+# 5. Start instance
+aws ec2 start-instances --instance-ids i-XXXXX
+
+# 6. Verify cluster health
+redis-cli --tls [...] CLUSTER INFO
+```
+
+**Recovery Time:** ~10-15 minutes
+
+---
+
+#### Scenario 2: Complete Cluster Failure
+
+**Symptoms:**
+
+- All 3 nodes DOWN
+- Total service outage
+
+**Recovery Steps:**
+
+```bash
+# 1. Launch new EC2 instances from AMI or snapshots
+aws ec2 run-instances \
+  --image-id ami-XXXXX \
+  --instance-type t2.micro \
+  --key-name redis-cluster-key \
+  --security-group-ids sg-XXXXX \
+  --subnet-id subnet-XXXXX \
+  --count 3
+
+# 2. Attach volumes from latest snapshots
+# (See Scenario 1 for volume restore commands)
+
+# 3. Start Redis on all nodes
+ssh ubuntu@<NODE1> "sudo systemctl start redis-server"
+ssh ubuntu@<NODE2> "sudo systemctl start redis-server"
+ssh ubuntu@<NODE3> "sudo systemctl start redis-server"
+
+# 4. Re-create cluster
+redis-cli --cluster create \
+  10.0.1.102:6379 10.0.2.27:6379 10.0.3.205:6379 \
+  --cluster-replicas 0 \
+  --cluster-yes \
+  --tls [...] \
+  -a AdminPassword123!
+
+# 5. Verify data integrity
+redis-cli --tls [...] DBSIZE
+redis-cli --tls [...] CLUSTER INFO
+```
+
+**Recovery Time:** ~45-60 minutes
+
+---
+
+#### Scenario 3: Data Corruption
+
+**Symptoms:**
+
+- Redis starts but data is corrupted
+- Cluster shows "CLUSTERDOWN" state
+
+**Recovery Steps:**
+
+```bash
+# 1. Stop Redis on affected node
+sudo systemctl stop redis-server
+
+# 2. Backup corrupted data (for forensics)
+sudo cp /var/lib/redis/dump.rdb /var/lib/redis/dump-corrupted-$(date +%Y%m%d).rdb
+
+# 3. Restore from RDB backup
+sudo cp ~/backup-YYYYMMDD.rdb /var/lib/redis/dump.rdb
+sudo chown redis:redis /var/lib/redis/dump.rdb
+
+# 4. OR restore from AOF
+sudo cp ~/backup-appendonly.aof /var/lib/redis/appendonly.aof
+
+# 5. Start Redis
+sudo systemctl start redis-server
+sudo systemctl status redis-server
+
+# 6. Verify data
+redis-cli --tls [...] DBSIZE
+```
+
+**Data Loss:** Depends on backup age (daily = up to 24 hours)
+
+---
+
+## Disaster Recovery Plan
+
+### DR Objectives
+
+**RTO (Recovery Time Objective):** 1 hour  
+**RPO (Recovery Point Objective):** 24 hours (daily backups)
+
+### DR Architecture
+
+**Primary Region:** us-east-1 (N. Virginia)  
+**DR Region:** us-west-2 (Oregon)
+
+**DR Strategy:** Warm standby
+
+- Daily EBS snapshots copied to us-west-2
+- Pre-configured VPC and security groups in DR region
+- AMI replicated to DR region
+- Documented runbook for region failover
+
+---
+
+### DR Failover Procedure
+
+**Trigger Events:**
+
+- Complete us-east-1 region outage
+- Data center failure affecting all AZs
+- Network partition lasting >30 minutes
+
+**Failover Steps:**
+
+```bash
+# 1. Verify primary region is down
+aws ec2 describe-instances --region us-east-1 --query 'Reservations[*].Instances[*].State'
+
+# 2. Launch instances in DR region from latest snapshots
+aws ec2 run-instances \
+  --region us-west-2 \
+  --image-id ami-XXXXX \
+  --instance-type t2.micro \
+  --key-name redis-cluster-key-dr \
+  --security-group-ids sg-DR-XXXXX \
+  --subnet-id subnet-DR-XXXXX \
+  --count 3
+
+# 3. Attach volumes created from replicated snapshots
+aws ec2 create-volume --region us-west-2 --snapshot-id snap-XXXXX
+aws ec2 attach-volume --region us-west-2 [...]
+
+# 4. Update DNS (if using Route 53)
+aws route53 change-resource-record-sets \
+  --hosted-zone-id ZXXXXX \
+  --change-batch file://failover-dns.json
+
+# 5. Start Redis cluster
+# (Same as cluster recovery procedure above)
+
+# 6. Update application connection strings
+# Point applications to DR region Redis endpoints
+```
+
+**Estimated Failover Time:** 45-60 minutes
+
+---
+
+### DR Failback Procedure
+
+**When to failback:**
+
+- Primary region restored and stable for 24+ hours
+- DR region experiencing issues
+- Cost optimization (DR region may be more expensive)
+
+**Failback Steps:**
+
+```bash
+# 1. Create final snapshot in DR region
+aws ec2 create-snapshot --region us-west-2 [...]
+
+# 2. Copy snapshot to primary region
+aws ec2 copy-snapshot \
+  --source-region us-west-2 \
+  --region us-east-1 \
+  --source-snapshot-id snap-DR-XXXXX
+
+# 3. Rebuild primary region cluster from DR snapshot
+# (Follow cluster recovery procedure)
+
+# 4. Verify data consistency
+redis-cli --tls [...] DBSIZE
+# Compare with DR region count
+
+# 5. Update DNS back to primary region
+aws route53 change-resource-record-sets [...]
+
+# 6. Monitor for 24 hours, then decommission DR cluster
+```
+
+**Estimated Failback Time:** 1-2 hours
+
+---
+
+### Testing DR Plan
+
+**Quarterly DR Drill:**
+
+```bash
+# 1. Schedule maintenance window (Sunday 2-4 AM)
+# 2. Create test snapshot
+# 3. Launch DR cluster in us-west-2
+# 4. Verify data integrity
+# 5. Test application connectivity
+# 6. Document any issues
+# 7. Destroy test resources
+```
+
+**Success Criteria:**
+
+- ✅ DR cluster launches successfully
+- ✅ Data matches primary region
+- ✅ RTO < 1 hour
+- ✅ All documentation is accurate
+
+---
+
 ## Next Steps
 
 ### For Production
