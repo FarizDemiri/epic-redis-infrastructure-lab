@@ -435,71 +435,275 @@ redis-cli -c --tls \
 
 ## Troubleshooting
 
-### Exporter Shows "Connection Refused"
+### Issue 1: Exporter Shows `redis_up 0`
 
-**Symptom:** `redis_up 0` or exporter logs show connection errors
+**Symptom:** Metrics show `redis_up 0` even though Redis is running
 
-**Causes:**
+**Root Cause:** Using `redis://` instead of `rediss://` in the exporter configuration
 
-1. Redis not running
-2. Wrong TLS certificates
-3. Wrong ACL password
+**Error in logs:**
+
+```
+level=error msg="Couldn't connect to redis instance (redis://127.0.0.1:6379)"
+```
+
+**Why it happens:** Redis is configured with TLS (`tls-port 6379`), so the exporter must use the secure protocol `rediss://` (double 's').
 
 **Fix:**
 
-```bash
-# Check Redis is running
-sudo redis-server /etc/redis/redis-cluster.conf &
+Edit `/etc/systemd/system/redis_exporter.service` and change:
 
-# Test connection manually
+```ini
+# WRONG:
+--redis.addr=redis://127.0.0.1:6379 \
+
+# CORRECT:
+--redis.addr=rediss://127.0.0.1:6379 \
+```
+
+Then restart:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart redis_exporter
+```
+
+---
+
+### Issue 2: Exporter Crashes with "Invalid Argument"
+
+**Symptom:** Exporter won't start, shows exit code 2 (INVALIDARGUMENT)
+
+**Error in logs:**
+
+```
+redis_exporter.service: Main process exited, code=exited, status=2/INVALIDARGUMENT
+```
+
+**Root Cause:** Using wrong flag name `--skip-verify=true` instead of `--skip-tls-verification`
+
+**Why it happens:** The Redis Exporter doesn't recognize `--skip-verify` as a valid flag. You can verify correct flags with `redis_exporter --help`.
+
+**Fix:**
+
+Edit `/etc/systemd/system/redis_exporter.service` and change:
+
+```ini
+# WRONG:
+--skip-verify=true \
+
+# CORRECT:
+--skip-tls-verification \
+```
+
+**Complete working ExecStart block:**
+
+```ini
+ExecStart=/usr/local/bin/redis_exporter \
+  --redis.addr=rediss://127.0.0.1:6379 \
+  --redis.password=AdminPassword123! \
+  --redis.user=admin_user \
+  --tls-client-cert-file=/home/ubuntu/redis-certs/redis-server-cert.pem \
+  --tls-client-key-file=/home/ubuntu/redis-certs/redis-server-key.pem \
+  --tls-ca-cert-file=/home/ubuntu/redis-certs/ca-cert.pem \
+  --skip-tls-verification \
+  --web.listen-address=:9121
+```
+
+Then restart:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart redis_exporter
+sudo systemctl status redis_exporter  # Should show "active (running)"
+```
+
+---
+
+### Issue 3: Grafana Connection Refused
+
+**Symptom:** Browser shows "ERR_CONNECTION_REFUSED" when accessing `http://<IP>:3000`
+
+**Root Cause:** Security group missing inbound rule for port 3000
+
+**Why it happens:** AWS security groups deny all inbound traffic by default. Even though Grafana is running on the instance, the firewall blocks external access.
+
+**Fix:**
+
+1. AWS Console → EC2 → Security Groups → **prometheus-sg**
+2. Click **"Edit inbound rules"**
+3. Click **"Add rule"**
+4. Configure:
+   - Type: Custom TCP
+   - Port: 3000
+   - Source: My IP (auto-fills your current IP)
+   - Description: Grafana
+5. Click **"Save rules"**
+
+Wait 10-30 seconds, then refresh browser.
+
+---
+
+### Issue 4: Prometheus Targets Showing "DOWN"
+
+**Symptom:** Prometheus targets page shows all exporters with red "DOWN" status
+
+**Root Cause:** Security group not allowing port 9121 from Prometheus instance
+
+**Fix:**
+
+1. AWS Console → EC2 → Security Groups → **redis-cluster-sg**
+2. Edit inbound rules
+3. Add rule:
+   - Type: Custom TCP
+   - Port: 9121
+   - Source: 10.0.0.0/16 (entire VPC CIDR)
+   - Description: Redis Exporter metrics
+4. Save rules
+
+Verify with:
+
+```bash
+# From Prometheus instance, test connectivity:
+curl http://10.0.1.102:9121/metrics | head -10
+```
+
+---
+
+### Issue 5: Grafana Dashboard Shows "No Data"
+
+**Symptom:** Dashboard panels display "No data" even though Prometheus shows targets UP
+
+**Root Cause:** Time range set to "Last 24 hours" but metrics just started collecting
+
+**Why it happens:** Dashboard queries historical data, but your monitoring stack was just deployed so there's no 24-hour history yet.
+
+**Fix:**
+
+1. In Grafana, look at top-right corner
+2. Click the time range dropdown (shows "Last 24 hours")
+3. Select **"Last 5 minutes"**
+4. Data should appear immediately
+
+After a few hours, you can expand the time range to show longer trends.
+
+---
+
+### Issue 6: Connected to Wrong Instance
+
+**Symptom:** Commands fail with "service not found" when trying to manage Grafana/Prometheus
+
+**Example:**
+
+```bash
+ubuntu@ip-10-0-1-102:~$ sudo systemctl status grafana-server
+Unit grafana-server.service could not be found.
+```
+
+**Root Cause:** SSH'd into a Redis node instead of the Prometheus monitoring instance
+
+**Why it happens:** Easy to lose track of which terminal is connected to which server, especially with multiple SSH sessions open.
+
+**Fix:**
+
+1. Check current hostname:
+
+```bash
+hostname
+# Prometheus instance shows: ip-10-0-1-87
+# Redis nodes show: ip-10-0-1-102, ip-10-0-2-27, ip-10-0-3-205
+```
+
+1. Exit and connect to correct instance:
+
+```bash
+exit
+ssh -i redis-cluster-key.pem ubuntu@<PROMETHEUS_PUBLIC_IP>
+```
+
+**Best practice:** Name your terminal tabs/windows clearly:
+
+- "Prometheus/Grafana"
+- "Redis Node 1a"
+- "Redis Node 1b"
+- "Redis Node 1c"
+
+---
+
+### Issue 7: Exporter Can't Read TLS Certificates
+
+**Symptom:** Exporter logs show permission denied or file not found errors
+
+**Possible causes:**
+
+1. Certificate files don't exist:
+
+```bash
+ls -la ~/redis-certs/
+# Should show: ca-cert.pem, redis-server-cert.pem, redis-server-key.pem
+```
+
+1. Wrong file permissions:
+
+```bash
+chmod 644 ~/redis-certs/*.pem
+```
+
+1. Wrong path in service file - ensure using absolute path:
+
+```ini
+# CORRECT:
+--tls-client-cert-file=/home/ubuntu/redis-certs/redis-server-cert.pem
+
+# WRONG:
+--tls-client-cert-file=~/redis-certs/redis-server-cert.pem  # ~ doesn't expand in systemd
+```
+
+---
+
+### Debugging Commands
+
+**Check if Redis Exporter is running:**
+
+```bash
+sudo systemctl status redis_exporter
+```
+
+**View recent exporter logs:**
+
+```bash
+sudo journalctl -u redis_exporter -n 50 --no-pager
+```
+
+**Test exporter metrics endpoint:**
+
+```bash
+curl http://localhost:9121/metrics | grep redis_up
+# Expected: redis_up 1
+```
+
+**Check if Redis is running:**
+
+```bash
+ps aux | grep redis-server
+```
+
+**Test Redis connection with TLS:**
+
+```bash
 redis-cli --tls \
   --cert ~/redis-certs/redis-server-cert.pem \
   --key ~/redis-certs/redis-server-key.pem \
   --cacert ~/redis-certs/ca-cert.pem \
   --user admin_user --pass AdminPassword123! \
   PING
+# Expected: PONG
 ```
 
-### Prometheus Targets Are "Down"
-
-**Symptom:** Targets page shows red "DOWN" status
-
-**Causes:**
-
-1. Security group blocking port 9121
-2. Wrong private IP in prometheus.yml
-3. Exporter not running
-
-**Fix:**
+**Check Prometheus targets:**
 
 ```bash
-# Verify security group allows 9121 from VPC
-# Check private IPs match
-aws ec2 describe-instances --filters "Name=tag:Name,Values=redis-node-*" \
-  --query 'Reservations[*].Instances[*].[Tags[?Key==`Name`].Value|[0],PrivateIpAddress]'
-
-# Verify exporter is running on each node
-sudo systemctl status redis_exporter
-```
-
-### Grafana Shows "No Data"
-
-**Symptom:** Dashboard panels empty
-
-**Causes:**
-
-1. Data source not configured
-2. Prometheus not scraping
-3. Wrong time range selected
-
-**Fix:**
-
-```bash
-# Test Prometheus data source
-curl http://localhost:9090/api/v1/query?query=redis_up
-
-# Check time range (top-right in Grafana)
-# Set to "Last 5 minutes"
+curl http://localhost:9090/api/v1/targets | jq '.data.activeTargets[] | {instance: .labels.instance, health: .health}'
 ```
 
 ---
