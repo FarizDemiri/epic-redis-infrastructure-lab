@@ -1,13 +1,33 @@
 # Epic EHR Redis Infrastructure Lab
 
-> Production-grade Redis infrastructure demonstrating HIPAA-compliant caching and session management for Epic Systems healthcare environments.
+> Production-grade Redis infrastructure demonstrating HIPAA-aligned caching and session management for Epic Systems healthcare environments.
 
 [![Redis](https://img.shields.io/badge/Redis-7.0.15-DC382D?logo=redis)](https://redis.io/)
 [![AWS](https://img.shields.io/badge/AWS-EC2%20%7C%20VPC-FF9900?logo=amazon-aws)](https://aws.amazon.com/)
 [![Prometheus](https://img.shields.io/badge/Prometheus-2.48-E6522C?logo=prometheus)](https://prometheus.io/)
 [![Grafana](https://img.shields.io/badge/Grafana-Latest-F46800?logo=grafana)](https://grafana.com/)
-[![HIPAA](https://img.shields.io/badge/HIPAA-Compliant-blue)](https://www.hhs.gov/hipaa/index.html)
+[![HIPAA](https://img.shields.io/badge/HIPAA-Aligned-blue)](https://www.hhs.gov/hipaa/index.html)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+---
+
+## ⚡ What I Built
+
+**Operational Redis infrastructure deployed on AWS:**
+
+- ✅ **3-node Redis Cluster** (sharded across 3 availability zones)
+- ✅ **TLS 1.3 encryption** + ACL authentication (4-layer security)
+- ✅ **Full observability stack** (Redis Exporter → Prometheus → Grafana)
+- ✅ **Production runbooks** (deployment, monitoring, disaster recovery, incident response)
+- ✅ **Epic EHR integration patterns** (session management, message queuing, real-time caching)
+
+**Validated:**  
+✓ Cluster failover & resharding  
+✓ TLS/ACL security controls  
+✓ Monitoring & alerting setup  
+✓ Backup/restore procedures  
+
+> **Architecture Note:** Current deployment is 3 master nodes (no replicas) for cost efficiency. Production would use 3 masters + 3 replicas for automatic failover. Sentinel-based HA is documented as an alternative non-sharded architecture.
 
 ---
 
@@ -18,7 +38,7 @@
 - [Live Monitoring](#live-monitoring)
 - [Architecture](#architecture)
 - [Epic Integration Use Cases](#epic-integration-use-cases)
-- [Security & HIPAA Compliance](#security--hipaa-compliance)
+- [Security & HIPAA-Aligned Controls](#security--hipaa-aligned-controls)
 - [Skills Demonstrated](#skills-demonstrated)
 - [Quick Start](#quick-start)
 - [Documentation](#documentation)
@@ -30,7 +50,7 @@
 This project demonstrates enterprise-grade Redis administration for **Epic Systems EHR** environments, focusing on:
 
 - **High availability** for 24/7 hospital operations
-- **HIPAA compliance** with defense-in-depth security
+- **HIPAA-aligned controls** with defense-in-depth security
 - **Production monitoring** with Prometheus and Grafana
 - **Epic-specific** use cases (MyChart, Interconnect, CLOC AI)
 
@@ -206,7 +226,7 @@ CONFIG SET maxmemory-policy allkeys-lru
 
 ---
 
-## Security & HIPAA Compliance
+## Security & HIPAA-Aligned Controls
 
 ### Four-Layer Defense-in-Depth Architecture
 
@@ -245,7 +265,7 @@ ACL SETUSER app_user on >SecurePassword123! ~session:* ~patient:* +get +set +del
 - Protects against physical disk theft
 - Automatic key rotation
 
-### HIPAA Compliance Checklist
+### HIPAA Technical Safeguards Mapping
 
 - ✅ **Administrative Safeguards:** ACL-based access controls
 - ✅ **Physical Safeguards:** EBS encryption at rest
@@ -271,7 +291,8 @@ ACL SETUSER app_user on >SecurePassword123! ~session:* ~patient:* +get +set +del
 ### Redis Expertise
 
 - ✅ Cluster mode architecture (sharding, hash slots)
-- ✅ Replication and Sentinel-based failover
+- ✅ Redis Cluster sharding and slot management
+- ✅ Replication strategies (alternative architectures documented)
 - ✅ TLS/SSL certificate management
 - ✅ ACL configuration for multi-tenant access
 - ✅ Performance tuning and benchmarking
@@ -367,7 +388,7 @@ ACL SETUSER app_user on >SecurePassword123! ~session:* ~patient:* +get +set +del
 - **[AWS Production Deployment](docs/runbooks/aws-production-deployment.md)** - Step-by-step AWS infrastructure setup with TLS, ACLs, and EBS encryption (800+ lines)
 - **[Monitoring Setup](docs/runbooks/monitoring-setup.md)** - Prometheus, Grafana, and Redis Exporter configuration with detailed troubleshooting
 - **[Replication Setup](docs/runbooks/replication-setup.md)** - Master-replica configuration with automatic failover procedures
-- **[Sentinel High Availability](docs/runbooks/sentinel-ha.md)** - Automated failover with Sentinel quorum and recovery testing
+- **[Sentinel High Availability](docs/runbooks/sentinel-ha.md)** - Alternative HA architecture (non-sharded master-replica with Sentinel quorum)
 
 ### 🧠 Technical Guides
 
@@ -394,7 +415,7 @@ ACL SETUSER app_user on >SecurePassword123! ~session:* ~patient:* +get +set +del
 ### What Was Built
 
 ✅ **Production Infrastructure** - 3-node Redis cluster deployed across 3 AWS availability zones  
-✅ **HIPAA Compliance** - 4-layer security architecture with encryption and access controls  
+✅ **HIPAA-Aligned Security** - 4-layer defense-in-depth architecture with encryption and access controls  
 ✅ **Monitoring Stack** - Real-time observability with Prometheus and Grafana  
 ✅ **Epic Integration** - Demonstrated patterns for MyChart, Interconnect, and CLOC  
 ✅ **Complete Documentation** - 2000+ lines of runbooks, guides, and architecture docs  
