@@ -28,6 +28,10 @@ Comprehensive Redis infrastructure lab demonstrating high-availability configura
 - **Platform:** AWS EC2 (3 x t2.micro, Ubuntu 24.04 LTS)
 - **Network:** Multi-AZ VPC (us-east-1a, us-east-1b, us-east-1c)
 - **Redis:** v7.0.15 cluster (3 masters, 16384 hash slots)
+- **Monitoring:** Prometheus + Grafana + Redis Exporter
+  - Real-time metrics collection (30s scrape interval)
+  - Pre-built dashboards (memory, commands/sec, hit ratio)
+  - Alert configuration for cluster health
 - **Encryption:** TLS 1.3 (in-transit) + AES-256 EBS (at-rest)
 - **Access Control:** Redis ACLs (admin, app, dev roles)
 - **High Availability:** Multi-AZ deployment for fault tolerance
@@ -132,9 +136,10 @@ Comprehensive Redis infrastructure lab demonstrating high-availability configura
 
 ### Operational Runbooks
 
-- **[AWS Production Deployment](docs/runbooks/aws-production-deployment.md)** - Complete HIPAA-compliant cluster deployment on AWS EC2 with troubleshooting guide
-- **[Replication Setup](docs/runbooks/replication-setup.md)** - Master-replica configuration and manual failover procedures
-- **[Sentinel High Availability](docs/runbooks/sentinel-ha.md)** - Automated failover with Sentinel quorum
+- **[AWS Production Deployment](docs/runbooks/aws-production-deployment.md)** - Complete AWS infrastructure setup with TLS, ACLs, and EBS encryption
+- **[Monitoring Setup](docs/runbooks/monitoring-setup.md)** - Prometheus, Grafana, and Redis Exporter configuration
+- **[Replication Setup](docs/runbooks/replication-setup.md)** - Master-replica configuration with automatic failover
+- **[Sentinel HA](docs/runbooks/sentinel-ha.md)** - High availability automation and failover testingth Sentinel quorum
 
 ### Technical Guides
 
