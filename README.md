@@ -45,7 +45,7 @@ This project demonstrates enterprise-grade Redis administration for **Epic Syste
 
 ## Why This Project
 
-Healthcare systems like **NewYork-Presbyterian Hospital** rely on Epic EHR for patient records, clinical workflows, and real-time operations. Redis serves as critical infrastructure for:
+Healthcare systems rely on Epic EHR for patient records, clinical workflows, and real-time operations. Redis serves as critical infrastructure for:
 
 1. **Session Management** - 10,000+ concurrent MyChart/Hyperspace users
 2. **Message Buffering** - Epic Interconnect HL7 message routing
